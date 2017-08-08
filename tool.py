@@ -23,9 +23,9 @@ def extract_key_from_boot11(fn):
     with open(fn, 'rb') as r:
         boot11 = r.read()
         buf = boot11[0xB498:0xB498 + 0x1000]
-        #return buf
-        out += boot11[0xC878:0xC878 + 0x800]
-        out += buf[0x800:]
+        return buf
+        #out += boot11[0xC878:0xC878 + 0x800]
+        #out += buf[0x800:]
         #out = boot11[0xA450:0xA450 + 0x1048]
     return out
 
@@ -100,9 +100,35 @@ def inject_firm(blowfish, firm, buf):
         # 0x7E00: firm header offset
         secure += buf[off:off + 0xE00] + firm[:0x200]
 
+    flags = [
+        # normal card control register settings
+        (
+            0
+            | (1 << 27)     # NTRCARD_CLK_SLOW
+            #| (1 << 22)     # NTRCARD_SEC_CMD
+            #| (0x18 << 16) # NTRCARD_DELAY2(0x18)
+            #| (1 << 14)     # NTRCARD_SEC_EN
+            #| (1 << 13)     # NTRCARD_SEC_DAT
+            | 0x18          # NTRCARD_DELAY1(0x18)
+        ),
+        # secure card control register settings
+        (
+            0
+            | (1 << 27)     # NTRCARD_CLK_SLOW
+            | (0x18 << 16)  # NTRCARD_DELAY2(0x18)
+            | 0x8F8         # NTRCARD_DELAY1(0x8F8)
+        ),
+        #0, # icon banner offset
+        #0, # low: secure area crc, high: secure transfer timeout
+    ]
     buf = buf_to_int_list(
         blowfish +
-        buf[0x1048:AK2I_1ST_BLOWFISH_OFFSET] +
+        buf[0x1048:AK2I_HEADER_OFFSET] +
+        buf[AK2I_HEADER_OFFSET:AK2I_HEADER_OFFSET + 0x60] +
+        #'\x00' * 0x10 +
+        int_list_to_buf(flags) +
+        buf[AK2I_HEADER_OFFSET + 0x68:AK2I_1ST_BLOWFISH_OFFSET] +
+        #buf[AK2I_HEADER_OFFSET + 0x70:AK2I_1ST_BLOWFISH_OFFSET] +
         blowfish[:0x48] +
         buf[AK2I_1ST_BLOWFISH_OFFSET + 0x48:AK2I_2ND_BLOWFISH_OFFSET] +
         blowfish[0x48:0x48 + 0xBF0] +
