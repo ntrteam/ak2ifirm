@@ -18,6 +18,14 @@ AK2I_SEC_OFFSET = 0x6000
 AK2I_SEC_END_OFFSET = AK2I_SEC_OFFSET + 0x4000
 AK2I_DATA_OFFSET = 0xA000
 
+def bswap32(n):
+    return (
+        ((n >> 24) & 0xFF) |
+        (((n >> 16) & 0xFF) << 8) |
+        (((n >> 8) & 0xFF) << 16) |
+        ((n & 0xFF) << 24)
+    )
+
 def extract_key_from_boot11(fn):
     out = ''
     with open(fn, 'rb') as r:
@@ -94,11 +102,11 @@ def crypt_down(hash_table, buf, offset=0):
 def inject_firm(blowfish, firm, buf):
     # secure block order will shuffled using 0xFFFFE184
     # ref: 0xFFFF9B70
-    secure = ''
-    for x in xrange(4):
-        off = AK2I_SEC_OFFSET + 0x1000 * x
-        # 0x7E00: firm header offset
-        secure += buf[off:off + 0xE00] + firm[:0x200]
+    # 0x7E00: firm header offset
+    #decrypted = 'encryObj' + '\x00' * (0xE00 - 8)
+    decrypted = '\x00' * 0xE00
+    decrypted += firm[:0x200]
+    secure = decrypted * 4
 
     flags = [
         # normal card control register settings
@@ -121,6 +129,13 @@ def inject_firm(blowfish, firm, buf):
         #0, # icon banner offset
         #0, # low: secure area crc, high: secure transfer timeout
     ]
+
+    #key_datas = buf_to_int_list(blowfish)
+    firm_sections = buf_to_int_list(firm[0x200:])
+    #for x in xrange(0, len(firm_sections), 2):
+    #    crypt_down(key_datas, firm_sections, x)
+    firm_sections = int_list_to_buf(firm_sections)
+
     buf = buf_to_int_list(
         blowfish +
         buf[0x1048:AK2I_HEADER_OFFSET] +
@@ -135,7 +150,8 @@ def inject_firm(blowfish, firm, buf):
         buf[AK2I_2ND_BLOWFISH_OFFSET + 0xBF0:AK2I_SEC_OFFSET] +
         secure +
         buf[AK2I_SEC_END_OFFSET:AK2I_DATA_OFFSET] +
-        firm[0x200:] +
+        #firm[0x200:] +
+        firm_sections +
         buf[AK2I_DATA_OFFSET + len(firm) - 0x200:]
     )
     return int_list_to_buf(buf)
@@ -143,6 +159,7 @@ def inject_firm(blowfish, firm, buf):
 if __name__ == '__main__':
     import sys
 
+    # TODO argparse
     if sys.argv[1] == 'e':
         out = extract_key_from_boot11(sys.argv[2])
         open(sys.argv[3], 'wb').write(out)
