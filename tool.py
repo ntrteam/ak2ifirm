@@ -34,32 +34,23 @@ def bswap32(n):
         ((n & 0xFF) << 24)
     )
 
-def extract_key_from_boot11(fn):
+def extract_keydata_from_boot11(b11_buf):
     # ref: 0xFFFF82D0 of b11
-    out = ''
-    with open(fn, 'rb') as r:
-        boot11 = r.read()
-        buf = boot11[0xB498:0xB498 + 0x1000]
-        return buf
-    return out
+    return b11_buf[0xB498:0xB498 + 0x1000]
 
-def make_blowfish_data(src, dest):
+def make_blowfish_data(src_buf):
     # TODO: dev device use another method
     # ref: 0xFFFF98E8
+    if len(src_buf) != 0x1000:
+        # TODO error
+        return
     bf = [0] * 0x1048
-    with open(src, 'rb') as r:
-        buf = map(lambda x: ord(x), r.read())
-        if len(buf) != 0x1000:
-            # TODO error
-            return
-        for x in xrange(0x48):
-            idx = 0x100 * (x % 16) + buf[x]
-            bf[x] = buf[idx]
+    buf = map(lambda x: ord(x), src_buf)
+    for x in xrange(0x48):
+        idx = 0x100 * (x % 16) + buf[x]
+        bf[x] = buf[idx]
     bf = bf[:0x48] + buf
-
-    with open(dest, 'wb') as w:
-        for c in bf:
-            w.write(chr(c))
+    return ''.join(map(lambda x: chr(x), bf))
 
 def int_list_to_buf(buf):
     ret = ''
@@ -133,7 +124,10 @@ def inject_firm(blowfish, firm, buf):
             | 0x8F8         # NTRCARD_DELAY1(0x8F8)
         ),
         #0, # icon banner offset
-        struct.unpack('<I', buf[AK2I_HEADER_OFFSET + 0x68:AK2I_HEADER_OFFSET + 0x68 + 4])[0],
+        struct.unpack(
+            '<I',
+            buf[AK2I_HEADER_OFFSET + 0x68:AK2I_HEADER_OFFSET + 0x68 + 4]
+        )[0],
         #0, # low: secure area crc, high: secure transfer timeout
         (0x0D7E << 16) | secure_crc,
     ]
@@ -166,21 +160,45 @@ def inject_firm(blowfish, firm, buf):
     return int_list_to_buf(buf)
 
 if __name__ == '__main__':
-    import sys
+    import argparse
 
-    # TODO argparse
-    if sys.argv[1] == 'e':
-        out = extract_key_from_boot11(sys.argv[2])
-        open(sys.argv[3], 'wb').write(out)
-        raise SystemExit(0)
-    if sys.argv[1] == 'd':
-        make_blowfish_data(sys.argv[2], sys.argv[3])
-        raise SystemExit(0)
-    if sys.argv[1] == 'x':
-        out = inject_firm(
-            open(sys.argv[2], 'rb').read(),
-            open(sys.argv[3], 'rb').read(),
-            open(sys.argv[4], 'rb').read(),
-        )
-        open(sys.argv[5], 'wb').write(out)
-        raise SystemExit(0)
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+    blowfish_parser = subparsers.add_parser(
+        'blowfish',
+        description='Extract blowfish.bin from boot11'
+    )
+    blowfish_parser.set_defaults(mode='blowfish')
+    blowfish_parser.add_argument('boot11_file', metavar='boot11.bin')
+    blowfish_parser.add_argument('--out', default='blowfish.bin',
+                                 help='out filename (default: blowfish.bin)')
+    inject_parser = subparsers.add_parser(
+        'inject',
+        description='Inject boot9strap to ak2i flash file'
+    )
+    inject_parser.set_defaults(mode='inject')
+    inject_parser.add_argument('blowfish_file', metavar='blowfish.bin')
+    inject_parser.add_argument('boot9strap_file', metavar='boot9strap_ntr.bin')
+    inject_parser.add_argument('ak2i_flash_file', metavar='ak2i_flash.bin')
+    inject_parser.add_argument('--out', default='ak2i_patch.bin',
+                               help='out filename (default: ak2i_patch.bin)')
+    args = parser.parse_args()
+    #print args
+
+    if args.mode == 'blowfish':
+        with open(args.boot11_file, 'rb') as b11:
+            initial_keydata = extract_keydata_from_boot11(b11.read())
+            out = make_blowfish_data(initial_keydata)
+            with open(args.out, 'wb') as w:
+                w.write(out)
+            raise SystemExit(0)
+    if args.mode == 'inject':
+        with open(args.blowfish_file, 'rb') as bf, \
+            open(args.boot9strap_file, 'rb') as firm, \
+            open(args.ak2i_flash_file, 'rb') as flash:
+            out = inject_firm(bf.read(), firm.read(), flash.read())
+            with open(args.out, 'wb') as w:
+                w.write(out)
+            raise SystemExit(0)
+    # something wrong
+    raise SystemExit(1)
