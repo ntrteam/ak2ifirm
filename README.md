@@ -1,5 +1,3 @@
-WIP: still cannot trig `boot.firm`
-
 # AK2I firm generator for ntrboot
 ## Requirements
 - boot11.bin
@@ -23,3 +21,14 @@ python tool.py x blowfish.bin boot9strap_ntr.firm ak2i_flash.bin ak2i_patch.bin
 [firm]: https://www.3dbrew.org/wiki/FIRM
 [bootloader]: https://www.3dbrew.org/wiki/Bootloader
 [gbatek]: http://problemkaputt.de/gbatek.htm
+
+## Credits
+- [Normmatt][normmatt] - He knows everything and help to fix my mistake
+- [TuxSH][tuxsh] - Made [firmtool][firmtool]
+- [SciresM][sciresm] - He shared this flaw
+
+[normmatt]: https://github.com/Normmatt
+[sciresm]: https://github.com/SciresM/boot9strap
+[tuxsh]: https://github.com/TuxSH/firmtool
+[firmtool]: https://github.com/TuxSH/firmtool
+

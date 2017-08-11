@@ -1,4 +1,5 @@
 import struct
+from PyCRC.CRC16 import CRC16
 
 # AK2I rom layout
 # | offset | size   | desc                                        |
@@ -10,13 +11,13 @@ import struct
 # | 0x5000 | 0x1000 | `FF00FF00AA555AA55` magic then ...          |
 # | 0x6000 | 0x4000 | sec block                                   |
 # | 0xA000 | ...    | data block                                  |
-AK2I_BLOWFISH_OFFSET = 0x0000
-AK2I_HEADER_OFFSET = 0x2000
-AK2I_1ST_BLOWFISH_OFFSET = 0x4000
-AK2I_2ND_BLOWFISH_OFFSET = 0x4400
-AK2I_SEC_OFFSET = 0x6000
+AK2I_BLOWFISH_OFFSET = 0x80000
+AK2I_HEADER_OFFSET = 0x82000
+AK2I_1ST_BLOWFISH_OFFSET = 0x83600
+AK2I_2ND_BLOWFISH_OFFSET = 0x84800
+AK2I_SEC_OFFSET = 0x86000
 AK2I_SEC_END_OFFSET = AK2I_SEC_OFFSET + 0x4000
-AK2I_DATA_OFFSET = 0xA000
+AK2I_DATA_OFFSET = 0x8A000
 
 def bswap32(n):
     return (
@@ -107,6 +108,7 @@ def inject_firm(blowfish, firm, buf):
     decrypted = '\x00' * 0xE00
     decrypted += firm[:0x200]
     secure = decrypted * 4
+    secure_crc = CRC16(modbus_flag=True).calculate(secure)
 
     flags = [
         # normal card control register settings
@@ -127,7 +129,9 @@ def inject_firm(blowfish, firm, buf):
             | 0x8F8         # NTRCARD_DELAY1(0x8F8)
         ),
         #0, # icon banner offset
+        struct.unpack('<I', buf[AK2I_HEADER_OFFSET + 0x68:AK2I_HEADER_OFFSET + 0x68 + 4])[0],
         #0, # low: secure area crc, high: secure transfer timeout
+        (0x0D7E << 16) | secure_crc,
     ]
 
     #key_datas = buf_to_int_list(blowfish)
@@ -136,17 +140,30 @@ def inject_firm(blowfish, firm, buf):
     #    crypt_down(key_datas, firm_sections, x)
     firm_sections = int_list_to_buf(firm_sections)
 
-    buf = buf_to_int_list(
-        blowfish +
-        buf[0x1048:AK2I_HEADER_OFFSET] +
+    header = (
         buf[AK2I_HEADER_OFFSET:AK2I_HEADER_OFFSET + 0x60] +
-        #'\x00' * 0x10 +
         int_list_to_buf(flags) +
-        buf[AK2I_HEADER_OFFSET + 0x68:AK2I_1ST_BLOWFISH_OFFSET] +
+        buf[AK2I_HEADER_OFFSET + 0x70:AK2I_HEADER_OFFSET + 0x15E]
+    )
+    header += struct.pack('<H', CRC16(modbus_flag=True).calculate(header))
+
+    buf = buf_to_int_list(
+        buf[:AK2I_BLOWFISH_OFFSET] +
+        blowfish +
+        buf[AK2I_BLOWFISH_OFFSET + 0x1048:AK2I_HEADER_OFFSET] +
+        #buf[:AK2I_HEADER_OFFSET] +
+        #buf[AK2I_HEADER_OFFSET:AK2I_HEADER_OFFSET + 0x60] +
+        #'\x00' * 0x10 +
+        #int_list_to_buf(flags) +
+        #buf[AK2I_HEADER_OFFSET + 0x68:AK2I_1ST_BLOWFISH_OFFSET] +
         #buf[AK2I_HEADER_OFFSET + 0x70:AK2I_1ST_BLOWFISH_OFFSET] +
-        blowfish[:0x48] +
+        header +
+        buf[AK2I_HEADER_OFFSET + 0x160:AK2I_1ST_BLOWFISH_OFFSET] +
+        #blowfish[:0x48] +
+        buf[:0x48] +
         buf[AK2I_1ST_BLOWFISH_OFFSET + 0x48:AK2I_2ND_BLOWFISH_OFFSET] +
-        blowfish[0x48:0x48 + 0xBF0] +
+        #blowfish[0x48:0x48 + 0xBF0] +
+        buf[0x48:0x48 + 0xBF0] +
         buf[AK2I_2ND_BLOWFISH_OFFSET + 0xBF0:AK2I_SEC_OFFSET] +
         secure +
         buf[AK2I_SEC_END_OFFSET:AK2I_DATA_OFFSET] +
