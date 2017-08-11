@@ -159,7 +159,7 @@ def inject_firm(blowfish, firm, buf):
     )
     return int_list_to_buf(buf)
 
-if __name__ == '__main__':
+def main():
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -202,3 +202,6 @@ if __name__ == '__main__':
             raise SystemExit(0)
     # something wrong
     raise SystemExit(1)
+
+if __name__ == '__main__':
+    main()
