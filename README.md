@@ -1,4 +1,5 @@
 # AK2I firm generator for ntrboot
+
 ## Requirements
 - boot11.bin
 - ak2i_flash.bin
@@ -7,9 +8,8 @@
 
 ## Steps
 ```bash
-python tool.py e boot11.bin extract_b498.bin
-python tool.py d extract_b498.bin blowfish.bin
-python tool.py x blowfish.bin boot9strap_ntr.firm ak2i_flash.bin ak2i_patch.bin
+python tool.py blowfish boot11.bin
+python tool.py inject blowfish.bin boot9strap_ntr.firm ak2i_flash.bin
 ```
 
 ## References
@@ -17,22 +17,24 @@ python tool.py x blowfish.bin boot9strap_ntr.firm ak2i_flash.bin ak2i_patch.bin
 - [3dbrew FIRM][firm]
 - [3dbrew bootloader][bootloader]
 - [GBATEK][gbatek]
-- [33.5c3][33hc3]
+- [33.5c3][33_5c3]
 
 [d9wip]: https://github.com/d0k3/Decrypt9WIP
 [firm]: https://www.3dbrew.org/wiki/FIRM
 [bootloader]: https://www.3dbrew.org/wiki/Bootloader
 [gbatek]: http://problemkaputt.de/gbatek.htm
-[33hc3]: https://sciresm.github.io/33-and-a-half-c3
+[33_5c3]: https://sciresm.github.io/33-and-a-half-c3
 
 ## Credits
 - [Normmatt][normmatt] - He knows everything and help to fix my mistake
+- [d0k3][d0k3] - Made [Decrypt9WIP][d9wip] and [GodMode9][gm9]
 - [TuxSH][tuxsh] - Made [firmtool][firmtool]
 - [SciresM][sciresm] - Shared this flaw & implemented [boot9strap][b9s]
-- And all others 
+- And all others
 
 [normmatt]: https://github.com/Normmatt
 [sciresm]: https://github.com/SciresM/boot9strap
 [tuxsh]: https://github.com/TuxSH/firmtool
 [firmtool]: https://github.com/TuxSH/firmtool
 [b9s]: https://github.com/SciresM/boot9strap
+[gm9]: https://github.com/d0k3/GodMode9
