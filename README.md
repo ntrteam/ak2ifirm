@@ -7,13 +7,16 @@
 - modified decrypt9wip. require flash `0xA0000` instead `0x20000`
 
 ## Steps
+
 ```bash
-python tool.py blowfish boot11.bin
-python tool.py inject blowfish.bin boot9strap_ntr.firm ak2i_flash.bin
+git clone https://github.com/d3m3vilurr/ak2ifirm
+cd ak2ifirm && pip install .
+ak2ifirm blowfish boot11.bin
+ak2ifirm inject blowfish.bin boot9strap_ntr.firm ak2i_flash.bin
 ```
 
 ## References
-- [Decrypt9WIP][d9wip] by d0k3
+- [Decrypt9WIP][d9wip]
 - [3dbrew FIRM][firm]
 - [3dbrew bootloader][bootloader]
 - [GBATEK][gbatek]
@@ -35,6 +38,7 @@ python tool.py inject blowfish.bin boot9strap_ntr.firm ak2i_flash.bin
 [normmatt]: https://github.com/Normmatt
 [sciresm]: https://github.com/SciresM/boot9strap
 [tuxsh]: https://github.com/TuxSH/firmtool
+[d0k3]: https://github.com/d0k3
 [firmtool]: https://github.com/TuxSH/firmtool
 [b9s]: https://github.com/SciresM/boot9strap
 [gm9]: https://github.com/d0k3/GodMode9
