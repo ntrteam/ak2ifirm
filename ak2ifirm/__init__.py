@@ -1,3 +1,4 @@
+import sys
 import struct
 from PyCRC.CRC16 import CRC16
 
@@ -26,6 +27,12 @@ AK2I_SEC_OFFSET = 0x86000
 AK2I_SEC_END_OFFSET = AK2I_SEC_OFFSET + 0x4000
 AK2I_DATA_OFFSET = 0x8A000
 
+if sys.version_info[0] >= 3:
+    xrange = range
+    to_buf = lambda x: bytearray(x)
+else:
+    to_buf = lambda x: ''.join(map(lambda y: chr(y), x))
+
 def bswap32(n):
     return (
         ((n >> 24) & 0xFF) |
@@ -45,18 +52,18 @@ def make_blowfish_data(src_buf):
         # TODO error
         return
     bf = [0] * 0x1048
-    buf = map(lambda x: ord(x), src_buf)
+    buf = list(map(lambda x: x if type(x) == int else ord(x), src_buf))
     for x in xrange(0x48):
         idx = 0x100 * (x % 16) + buf[x]
         bf[x] = buf[idx]
     bf = bf[:0x48] + buf
-    return ''.join(map(lambda x: chr(x), bf))
+    return to_buf(bf)
 
 def int_list_to_buf(buf):
-    ret = ''
+    ret = []
     for x in buf:
-        ret += struct.pack('<I', x)
-    return ret
+        ret.append(struct.pack('<I', x))
+    return b''.join(ret)
 
 def buf_to_int_list(buf):
     ret = []
@@ -100,7 +107,7 @@ def inject_firm(blowfish, firm, buf):
     # ref: 0xFFFF9B70
     # zero fill will avoid encryption; gbatek.htm#dscartridgesecurearea
     # 0x7E00(0x9E00): firm header offset
-    decrypted = '\x00' * 0xE00
+    decrypted = b'\x00' * 0xE00
     decrypted += firm[:0x200]
     secure = decrypted * 4
     secure_crc = CRC16(modbus_flag=True).calculate(secure)
@@ -132,8 +139,7 @@ def inject_firm(blowfish, firm, buf):
         (0x0D7E << 16) | secure_crc,
     ]
 
-    firm_sections = buf_to_int_list(firm[0x200:])
-    firm_sections = int_list_to_buf(firm_sections)
+    firm_sections = firm[0x200:]
 
     header = (
         buf[AK2I_HEADER_OFFSET:AK2I_HEADER_OFFSET + 0x60] +
@@ -183,7 +189,9 @@ def main():
     inject_parser.add_argument('--out', default='ak2i_patch.bin',
                                help='out filename (default: ak2i_patch.bin)')
     args = parser.parse_args()
-    #print args
+    if not len(vars(args)):
+        parser.print_usage()
+        raise SystemExit(1)
 
     if args.mode == 'blowfish':
         with open(args.boot11_file, 'rb') as b11:
