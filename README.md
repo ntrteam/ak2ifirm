@@ -9,8 +9,7 @@
 ## Steps
 
 ```bash
-git clone https://github.com/d3m3vilurr/ak2ifirm
-cd ak2ifirm && pip install .
+pip install git+https://github.com/d3m3vilurr/ak2ifirm.git
 ak2ifirm blowfish boot11.bin
 ak2ifirm inject blowfish.bin boot9strap_ntr.firm ak2i_flash.bin
 ```
