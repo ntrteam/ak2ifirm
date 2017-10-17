@@ -45,6 +45,10 @@ def extract_keydata_from_boot11(b11_buf):
     # ref: 0xFFFF82D0 of b11
     return b11_buf[0xB498:0xB498 + 0x1000]
 
+def extract_ntr_bfdata_from_boot11(b11_buf):
+    # ref: 0xFFFF82D0 of b11
+    return b11_buf[0xA450:0xA450 + 0x1048]
+
 def make_blowfish_data(src_buf):
     # TODO: dev device use another method
     # ref: 0xFFFF98E8
@@ -178,6 +182,16 @@ def main():
     blowfish_parser.add_argument('boot11_file', metavar='boot11.bin')
     blowfish_parser.add_argument('--out', default='blowfish.bin',
                                  help='out filename (default: blowfish.bin)')
+
+    blowfish_parser = subparsers.add_parser(
+        'ntr',
+        description='Extract blowfish_ntr.bin from boot11'
+    )
+    blowfish_parser.set_defaults(mode='ntr')
+    blowfish_parser.add_argument('boot11_file', metavar='boot11.bin')
+    blowfish_parser.add_argument('--out', default='blowfish_ntr.bin',
+                                 help='out filename (default: blowfish_ntr.bin)')
+
     inject_parser = subparsers.add_parser(
         'inject',
         description='Inject boot9strap to ak2i flash file'
@@ -197,6 +211,12 @@ def main():
         with open(args.boot11_file, 'rb') as b11:
             initial_keydata = extract_keydata_from_boot11(b11.read())
             out = make_blowfish_data(initial_keydata)
+            with open(args.out, 'wb') as w:
+                w.write(out)
+            raise SystemExit(0)
+    if args.mode == 'ntr':
+        with open(args.boot11_file, 'rb') as b11:
+            out = extract_ntr_bfdata_from_boot11(b11.read())
             with open(args.out, 'wb') as w:
                 w.write(out)
             raise SystemExit(0)
